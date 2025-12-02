@@ -1,0 +1,25 @@
+<resources>
+    <string name="app_name">Competitive Programming Learning and Practice Suite</string>
+    <string name="feature_icon">Feature Icon</string>
+    
+    <!-- Navigation -->
+    <string name="problems">Problems</string>
+    <string name="profile">Profile</string>
+    <string name="bookmarks">Bookmarks</string>
+    <string name="learning">Learning</string>
+    
+    <!-- Home Screen -->
+    <string name="welcome_title">Welcome to CPLPS</string>
+    <string name="welcome_subtitle">Your Competitive Programming Companion</string>
+    <string name="quick_access">Quick Access</string>
+    
+    <!-- Features -->
+    <string name="browse_problems">Browse Problems</string>
+    <string name="browse_problems_desc">Explore problems from various platforms</string>
+    <string name="view_profile">Your Profile</string>
+    <string name="view_profile_desc">Track your progress and statistics</string>
+    <string name="manage_bookmarks">Manage Bookmarks</string>
+    <string name="manage_bookmarks_desc">Organize your problem collections</string>
+    <string name="cp_algorithms">CP Algorithms</string>
+    <string name="cp_algorithms_desc">Learn algorithmic concepts</string>
+</resources>
