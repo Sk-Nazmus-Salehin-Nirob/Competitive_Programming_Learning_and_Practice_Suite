@@ -141,4 +141,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         return username;
     }
+
+    // Get all users (for debugging)
+    public Cursor getAllUsers() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.rawQuery("SELECT user_id, username, email, created_at FROM " + TABLE_USERS, null);
+    }
+
+    // Get total user count
+    public int getUserCount() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_USERS, null);
+        int count = 0;
+        if (cursor.moveToFirst()) {
+            count = cursor.getInt(0);
+        }
+        cursor.close();
+        db.close();
+        return count;
+    }
 }
