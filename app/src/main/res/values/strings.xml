@@ -22,4 +22,33 @@
     <string name="manage_bookmarks_desc">Organize your problem collections</string>
     <string name="cp_algorithms">CP Algorithms</string>
     <string name="cp_algorithms_desc">Learn algorithmic concepts</string>
+    
+    <!-- Authentication -->
+    <string name="login_title">Login</string>
+    <string name="login">Login</string>
+    <string name="login_subtitle">Sign in to continue</string>
+    <string name="sign_up">Sign Up</string>
+    <string name="create_account">Create Account</string>
+    <string name="username">Username</string>
+    <string name="email">Email</string>
+    <string name="email_or_username">Email or Username</string>
+    <string name="password">Password</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="forgot_password">Forgot Password?</string>
+    <string name="dont_have_account">Don\'t have an account?</string>
+    <string name="already_have_account">Already have an account?</string>
+    <string name="logout">Logout</string>
+    
+    <!-- Validation Messages -->
+    <string name="error_empty_username">Username cannot be empty</string>
+    <string name="error_empty_email">Email cannot be empty</string>
+    <string name="error_invalid_email">Please enter a valid email</string>
+    <string name="error_empty_password">Password cannot be empty</string>
+    <string name="error_password_length">Password must be at least 6 characters</string>
+    <string name="error_password_mismatch">Passwords do not match</string>
+    <string name="error_username_exists">Username already exists</string>
+    <string name="error_email_exists">Email already registered</string>
+    <string name="error_invalid_credentials">Invalid email/username or password</string>
+    <string name="success_account_created">Account created successfully!</string>
+    <string name="success_login">Login successful!</string>
 </resources>
