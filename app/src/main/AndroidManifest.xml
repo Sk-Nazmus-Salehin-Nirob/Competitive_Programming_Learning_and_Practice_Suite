@@ -39,6 +39,12 @@
             android:exported="false"
             android:theme="@style/Theme.CPLPS.NoActionBar" />
         
+        
+        <!-- Profile Activity -->
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false" />
+        
         <!-- Main Activity -->
         <activity
             android:name=".MainActivity"

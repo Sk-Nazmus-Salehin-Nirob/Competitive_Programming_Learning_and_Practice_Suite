@@ -71,6 +71,8 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             } else if (itemId == R.id.nav_profile) {
                 // Navigate to Profile screen
+                Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
+                startActivity(intent);
                 return true;
             } else if (itemId == R.id.nav_bookmarks) {
                 // Navigate to Bookmarks screen

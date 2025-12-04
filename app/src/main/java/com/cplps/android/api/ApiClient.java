@@ -14,7 +14,7 @@ public class ApiClient {
 
     public static CodeforcesAPI getCodeforcesAPI() {
         if (codeforcesAPI == null) {
-            codeforcesAPI = getRetrofitInstance().create(CodeforcesAPI.java);
+            codeforcesAPI = getRetrofitInstance().create(CodeforcesAPI.class);
         }
         return codeforcesAPI;
     }
