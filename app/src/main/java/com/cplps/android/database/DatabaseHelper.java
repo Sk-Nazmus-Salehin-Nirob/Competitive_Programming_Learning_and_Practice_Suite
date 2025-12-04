@@ -11,7 +11,7 @@ import java.security.NoSuchAlgorithmException;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "CPLPS.db";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2;
 
     // Users table
     private static final String TABLE_USERS = "users";
@@ -20,6 +20,32 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_EMAIL = "email";
     private static final String COLUMN_PASSWORD = "password";
     private static final String COLUMN_CREATED_AT = "created_at";
+    
+    // Platforms table
+    private static final String TABLE_PLATFORMS = "platforms";
+    private static final String COLUMN_PLATFORM_ID = "platform_id";
+    private static final String COLUMN_PLATFORM_NAME = "platform_name";
+    private static final String COLUMN_HANDLE = "handle";
+    private static final String COLUMN_LAST_SYNCED = "last_synced";
+    private static final String COLUMN_RATING = "rating";
+    private static final String COLUMN_MAX_RATING = "max_rating";
+    
+    // Solved problems table
+    private static final String TABLE_SOLVED_PROBLEMS = "solved_problems";
+    private static final String COLUMN_PROBLEM_ID = "problem_id";
+    private static final String COLUMN_PROBLEM_CODE = "problem_code";
+    private static final String COLUMN_PROBLEM_NAME = "problem_name";
+    private static final String COLUMN_PROBLEM_RATING = "problem_rating";
+    private static final String COLUMN_SOLVED_AT = "solved_at";
+    
+    // Contests table
+    private static final String TABLE_CONTESTS = "contests";
+    private static final String COLUMN_CONTEST_ID = "contest_id";
+    private static final String COLUMN_CONTEST_NAME = "contest_name";
+    private static final String COLUMN_CONTEST_DATE = "contest_date";
+    private static final String COLUMN_RATING_CHANGE = "rating_change";
+    private static final String COLUMN_NEW_RATING = "new_rating";
+    private static final String COLUMN_RANK = "rank";
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -27,6 +53,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
+        // Users table
         String CREATE_USERS_TABLE = "CREATE TABLE " + TABLE_USERS + "("
                 + COLUMN_USER_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
                 + COLUMN_USERNAME + " TEXT UNIQUE NOT NULL,"
@@ -35,12 +62,89 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_CREATED_AT + " DATETIME DEFAULT CURRENT_TIMESTAMP"
                 + ")";
         db.execSQL(CREATE_USERS_TABLE);
+        
+        // Platforms table
+        String CREATE_PLATFORMS_TABLE = "CREATE TABLE " + TABLE_PLATFORMS + "("
+                + COLUMN_PLATFORM_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_USER_ID + " INTEGER NOT NULL,"
+                + COLUMN_PLATFORM_NAME + " TEXT NOT NULL,"
+                + COLUMN_HANDLE + " TEXT NOT NULL,"
+                + COLUMN_LAST_SYNCED + " INTEGER DEFAULT 0,"
+                + COLUMN_RATING + " INTEGER DEFAULT 0,"
+                + COLUMN_MAX_RATING + " INTEGER DEFAULT 0,"
+                + "FOREIGN KEY(" + COLUMN_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COLUMN_USER_ID + "),"
+                + "UNIQUE(" + COLUMN_USER_ID + "," + COLUMN_PLATFORM_NAME + ")"
+                + ")";
+        db.execSQL(CREATE_PLATFORMS_TABLE);
+        
+        // Solved problems table
+        String CREATE_SOLVED_PROBLEMS_TABLE = "CREATE TABLE " + TABLE_SOLVED_PROBLEMS + "("
+                + COLUMN_PROBLEM_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_PLATFORM_ID + " INTEGER NOT NULL,"
+                + COLUMN_PROBLEM_CODE + " TEXT NOT NULL,"
+                + COLUMN_PROBLEM_NAME + " TEXT,"
+                + COLUMN_PROBLEM_RATING + " INTEGER,"
+                + COLUMN_SOLVED_AT + " INTEGER NOT NULL,"
+                + "FOREIGN KEY(" + COLUMN_PLATFORM_ID + ") REFERENCES " + TABLE_PLATFORMS + "(" + COLUMN_PLATFORM_ID + "),"
+                + "UNIQUE(" + COLUMN_PLATFORM_ID + "," + COLUMN_PROBLEM_CODE + ")"
+                + ")";
+        db.execSQL(CREATE_SOLVED_PROBLEMS_TABLE);
+        
+        // Contests table
+        String CREATE_CONTESTS_TABLE = "CREATE TABLE " + TABLE_CONTESTS + "("
+                + COLUMN_CONTEST_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_PLATFORM_ID + " INTEGER NOT NULL,"
+                + COLUMN_CONTEST_NAME + " TEXT,"
+                + COLUMN_CONTEST_DATE + " INTEGER NOT NULL,"
+                + COLUMN_RATING_CHANGE + " INTEGER,"
+                + COLUMN_NEW_RATING + " INTEGER,"
+                + COLUMN_RANK + " INTEGER,"
+                + "FOREIGN KEY(" + COLUMN_PLATFORM_ID + ") REFERENCES " + TABLE_PLATFORMS + "(" + COLUMN_PLATFORM_ID + ")"
+                + ")";
+        db.execSQL(CREATE_CONTESTS_TABLE);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
-        onCreate(db);
+        if (oldVersion < 2) {
+            // Add new tables for version 2
+            String CREATE_PLATFORMS_TABLE = "CREATE TABLE " + TABLE_PLATFORMS + "("
+                    + COLUMN_PLATFORM_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + COLUMN_USER_ID + " INTEGER NOT NULL,"
+                    + COLUMN_PLATFORM_NAME + " TEXT NOT NULL,"
+                    + COLUMN_HANDLE + " TEXT NOT NULL,"
+                    + COLUMN_LAST_SYNCED + " INTEGER DEFAULT 0,"
+                    +COLUMN_RATING + " INTEGER DEFAULT 0,"
+                    + COLUMN_MAX_RATING + " INTEGER DEFAULT 0,"
+                    + "FOREIGN KEY(" + COLUMN_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COLUMN_USER_ID + "),"
+                    + "UNIQUE(" + COLUMN_USER_ID + "," + COLUMN_PLATFORM_NAME + ")"
+                    + ")";
+            db.execSQL(CREATE_PLATFORMS_TABLE);
+            
+            String CREATE_SOLVED_PROBLEMS_TABLE = "CREATE TABLE " + TABLE_SOLVED_PROBLEMS + "("
+                    + COLUMN_PROBLEM_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + COLUMN_PLATFORM_ID + " INTEGER NOT NULL,"
+                    + COLUMN_PROBLEM_CODE + " TEXT NOT NULL,"
+                    + COLUMN_PROBLEM_NAME + " TEXT,"
+                    + COLUMN_PROBLEM_RATING + " INTEGER,"
+                    + COLUMN_SOLVED_AT + " INTEGER NOT NULL,"
+                    + "FOREIGN KEY(" + COLUMN_PLATFORM_ID + ") REFERENCES " + TABLE_PLATFORMS + "(" + COLUMN_PLATFORM_ID + "),"
+                    + "UNIQUE(" + COLUMN_PLATFORM_ID + "," + COLUMN_PROBLEM_CODE + ")"
+                    + ")";
+            db.execSQL(CREATE_SOLVED_PROBLEMS_TABLE);
+            
+            String CREATE_CONTESTS_TABLE = "CREATE TABLE " + TABLE_CONTESTS + "("
+                    + COLUMN_CONTEST_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + COLUMN_PLATFORM_ID + " INTEGER NOT NULL,"
+                    + COLUMN_CONTEST_NAME + " TEXT,"
+                    + COLUMN_CONTEST_DATE + " INTEGER NOT NULL,"
+                    + COLUMN_RATING_CHANGE + " INTEGER,"
+                    + COLUMN_NEW_RATING + " INTEGER,"
+                    + COLUMN_RANK + " INTEGER,"
+                    + "FOREIGN KEY(" + COLUMN_PLATFORM_ID + ") REFERENCES " + TABLE_PLATFORMS + "(" + COLUMN_PLATFORM_ID + ")"
+                    + ")";
+            db.execSQL(CREATE_CONTESTS_TABLE);
+        }
     }
 
     // Hash password using SHA-256
