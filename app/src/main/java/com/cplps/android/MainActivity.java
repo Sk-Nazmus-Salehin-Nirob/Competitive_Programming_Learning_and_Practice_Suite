@@ -42,7 +42,12 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.action_logout) {
+        int itemId = item.getItemId();
+        if (itemId == R.id.action_solved_problems) {
+            Intent intent = new Intent(MainActivity.this, SolvedProblemsActivity.class);
+            startActivity(intent);
+            return true;
+        } else if (itemId == R.id.action_logout) {
             logout();
             return true;
         }

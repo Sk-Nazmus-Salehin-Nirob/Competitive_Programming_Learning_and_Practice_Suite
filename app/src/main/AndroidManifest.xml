@@ -40,6 +40,12 @@
             android:theme="@style/Theme.CPLPS.NoActionBar" />
         
         
+        <!-- Solved Problems Activity -->
+        <activity
+            android:name=".SolvedProblemsActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+        
         <!-- Profile Activity -->
         <activity
             android:name=".ProfileActivity"
