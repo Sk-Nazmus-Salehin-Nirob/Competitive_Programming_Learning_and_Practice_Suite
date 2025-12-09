@@ -11,7 +11,7 @@ import java.security.NoSuchAlgorithmException;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "CPLPS.db";
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 3;
 
     // Users table
     private static final String TABLE_USERS = "users";
@@ -37,6 +37,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_PROBLEM_NAME = "problem_name";
     private static final String COLUMN_PROBLEM_RATING = "problem_rating";
     private static final String COLUMN_SOLVED_AT = "solved_at";
+    private static final String COLUMN_PROBLEM_CONTEST = "contest_name";
 
     // Contests table
     private static final String TABLE_CONTESTS = "contests";
@@ -84,6 +85,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_PROBLEM_CODE + " TEXT NOT NULL,"
                 + COLUMN_PROBLEM_NAME + " TEXT,"
                 + COLUMN_PROBLEM_RATING + " INTEGER,"
+                + COLUMN_PROBLEM_CONTEST + " TEXT,"
                 + COLUMN_SOLVED_AT + " INTEGER NOT NULL,"
                 + "FOREIGN KEY(" + COLUMN_PLATFORM_ID + ") REFERENCES " + TABLE_PLATFORMS + "(" + COLUMN_PLATFORM_ID
                 + "),"
@@ -148,6 +150,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     + ")"
                     + ")";
             db.execSQL(CREATE_CONTESTS_TABLE);
+        }
+
+        if (oldVersion < 3) {
+            // Add contest_name column to solved_problems table
+            db.execSQL("ALTER TABLE " + TABLE_SOLVED_PROBLEMS + " ADD COLUMN " + COLUMN_PROBLEM_CONTEST + " TEXT");
         }
     }
 
@@ -322,7 +329,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     // ===== SOLVED PROBLEMS METHODS =====
 
     // Add solved problem
-    public long addSolvedProblem(int platformId, String problemCode, String problemName, int rating, long solvedAt) {
+    public long addSolvedProblem(int platformId, String problemCode, String problemName, int rating, long solvedAt,
+            String contestName) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
 
@@ -331,6 +339,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_PROBLEM_NAME, problemName);
         values.put(COLUMN_PROBLEM_RATING, rating);
         values.put(COLUMN_SOLVED_AT, solvedAt);
+        values.put(COLUMN_PROBLEM_CONTEST, contestName);
 
         long result = db.insertWithOnConflict(TABLE_SOLVED_PROBLEMS, null, values, SQLiteDatabase.CONFLICT_IGNORE);
         db.close();

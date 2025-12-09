@@ -18,4 +18,14 @@
     <color name="text_secondary">#757575</color>
     <color name="divider">#BDBDBD</color>
     <color name="icon_background">#0D47A1</color>
+    
+    <!-- Codeforces Rating Colors -->
+    <color name="cf_newbie">#808080</color>
+    <color name="cf_pupil">#008000</color>
+    <color name="cf_specialist">#03A89E</color>
+    <color name="cf_expert">#0000FF</color>
+    <color name="cf_candidate_master">#AA00AA</color>
+    <color name="cf_master">#FF8C00</color>
+    <color name="cf_grandmaster">#FF0000</color>
+    <color name="cf_legendary">#FF0000</color>
 </resources>

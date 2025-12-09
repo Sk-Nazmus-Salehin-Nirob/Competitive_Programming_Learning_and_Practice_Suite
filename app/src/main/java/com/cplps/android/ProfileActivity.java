@@ -3,7 +3,12 @@ package com.cplps.android;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.graphics.Color;
+import android.text.SpannableString;
+import android.text.style.ForegroundColorSpan;
+import android.text.Spanned;
 import android.view.View;
+import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -21,6 +26,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import java.util.*;
+import java.text.SimpleDateFormat;
 
 public class ProfileActivity extends AppCompatActivity {
 
@@ -29,6 +35,8 @@ public class ProfileActivity extends AppCompatActivity {
     private MaterialButton buttonAddCFHandle, buttonSyncCF, buttonChangeHandle;
     private LinearLayout layoutAddHandle, layoutHandleInfo;
     private LineChart chartRating;
+    private GridLayout gridHeatmap;
+    private View cardHeatmap;
     private SessionManager sessionManager;
     private DatabaseHelper databaseHelper;
     private int currentUserId = 1;
@@ -62,13 +70,14 @@ public class ProfileActivity extends AppCompatActivity {
         layoutAddHandle = findViewById(R.id.layoutAddHandle);
         layoutHandleInfo = findViewById(R.id.layoutHandleInfo);
         chartRating = findViewById(R.id.chartRating);
+        gridHeatmap = findViewById(R.id.gridHeatmap);
+        cardHeatmap = findViewById(R.id.cardHeatmap);
     }
 
     private void loadUserData() {
         String username = sessionManager.getUsername();
         if (username != null) {
             textViewUsername.setText(username);
-            // Get actual user ID from database
             currentUserId = databaseHelper.getUserIdByUsername(username);
         }
     }
@@ -82,8 +91,34 @@ public class ProfileActivity extends AppCompatActivity {
             int rating = cursor.getInt(cursor.getColumnIndexOrThrow("rating"));
             int maxRating = cursor.getInt(cursor.getColumnIndexOrThrow("max_rating"));
 
-            textViewCFHandle.setText("Handle: " + currentHandle);
-            textViewCFRating.setText("Rating: " + rating + " (Max: " + maxRating + ")");
+            String currentRank = getCodeforcesRank(rating);
+            String maxRank = getCodeforcesRank(maxRating);
+
+            textViewCFHandle.setText(currentRank + "\n" + currentHandle);
+            textViewCFHandle.setTextColor(getCodeforcesColor(rating));
+
+            String ratingText = "Contest rating: " + rating + " (max. " + maxRank + ", " + maxRating + ")";
+            SpannableString spannableRating = new SpannableString(ratingText);
+
+            int ratingStart = ratingText.indexOf(String.valueOf(rating));
+            spannableRating.setSpan(
+                    new ForegroundColorSpan(getCodeforcesColor(rating)),
+                    ratingStart, ratingStart + String.valueOf(rating).length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+            int maxRankStart = ratingText.indexOf(maxRank);
+            spannableRating.setSpan(
+                    new ForegroundColorSpan(getCodeforcesColor(maxRating)),
+                    maxRankStart, maxRankStart + maxRank.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+            int maxRatingStart = ratingText.lastIndexOf(String.valueOf(maxRating));
+            spannableRating.setSpan(
+                    new ForegroundColorSpan(getCodeforcesColor(maxRating)),
+                    maxRatingStart, maxRatingStart + String.valueOf(maxRating).length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+            textViewCFRating.setText(spannableRating);
 
             int solvedCount = databaseHelper.getSolvedProblemsCount(platformId);
             textViewCFSolved.setText("Solved: " + solvedCount + " problems");
@@ -93,6 +128,7 @@ public class ProfileActivity extends AppCompatActivity {
             layoutHandleInfo.setVisibility(View.VISIBLE);
 
             fetchRatingHistory(currentHandle);
+            displayHeatmap();
             cursor.close();
         } else {
             layoutAddHandle.setVisibility(View.VISIBLE);
@@ -162,7 +198,7 @@ public class ProfileActivity extends AppCompatActivity {
             currentHandle = handle;
 
             textViewCFHandle.setText("Handle: " + handle);
-            textViewCFRating.setText("Rating: " + user.getRating() + " (Max: " + user.getMaxRating() + ")");
+            textViewCFRating.setText("Contest rating: " + user.getRating() + " (max. " + user.getMaxRating() + ")");
 
             layoutAddHandle.setVisibility(View.GONE);
             layoutHandleInfo.setVisibility(View.VISIBLE);
@@ -178,6 +214,7 @@ public class ProfileActivity extends AppCompatActivity {
         if (!currentHandle.isEmpty()) {
             fetchRatingHistory(currentHandle);
             fetchSolvedProblems(currentHandle);
+            displayHeatmap();
         }
     }
 
@@ -236,10 +273,12 @@ public class ProfileActivity extends AppCompatActivity {
 
                 if (!solvedProblems.contains(problemCode)) {
                     solvedProblems.add(problemCode);
+
                     databaseHelper.addSolvedProblem(platformId, problemCode,
                             submission.getProblemName(),
                             submission.getProblemRating(),
-                            submission.getCreationTimeSeconds());
+                            submission.getCreationTimeSeconds(),
+                            ""); // No contest name
                     count++;
                 }
             }
@@ -248,6 +287,8 @@ public class ProfileActivity extends AppCompatActivity {
         textViewCFSolved.setText("Solved: " + count + " problems");
         textViewTotalSolved.setText("Total Problems Solved: " + count);
         Toast.makeText(this, "Synced " + count + " problems!", Toast.LENGTH_LONG).show();
+
+        displayHeatmap();
     }
 
     private void displayRatingGraph(List<CFRatingChange> ratingChanges) {
@@ -257,7 +298,7 @@ public class ProfileActivity extends AppCompatActivity {
             entries.add(new Entry(i, ratingChanges.get(i).getNewRating()));
         }
 
-        LineDataSet dataSet = new LineDataSet(entries, "Rating");
+        LineDataSet dataSet = new LineDataSet(entries, "Contest Rating");
         dataSet.setColor(getColor(R.color.primary));
         dataSet.setValueTextColor(getColor(R.color.text_primary));
         dataSet.setLineWidth(2f);
@@ -273,5 +314,113 @@ public class ProfileActivity extends AppCompatActivity {
         chartRating.animateX(1000);
         chartRating.setVisibility(View.VISIBLE);
         chartRating.invalidate();
+    }
+
+    private void displayHeatmap() {
+        Cursor cursor = databaseHelper.getSolvedProblems(platformId);
+
+        if (cursor == null || cursor.getCount() == 0) {
+            if (cursor != null)
+                cursor.close();
+            return;
+        }
+
+        Map<String, Integer> activityMap = new HashMap<>();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+
+        while (cursor.moveToNext()) {
+            long timestamp = cursor.getLong(cursor.getColumnIndexOrThrow("solved_at"));
+            String date = dateFormat.format(new Date(timestamp * 1000));
+            activityMap.put(date, activityMap.getOrDefault(date, 0) + 1);
+        }
+        cursor.close();
+
+        gridHeatmap.removeAllViews();
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DAY_OF_YEAR, -364);
+
+        int maxCount = activityMap.values().isEmpty() ? 1 : Collections.max(activityMap.values());
+
+        for (int week = 0; week < 53; week++) {
+            for (int day = 0; day < 7; day++) {
+                String date = dateFormat.format(cal.getTime());
+                int count = activityMap.getOrDefault(date, 0);
+
+                View tile = new View(this);
+                int size = (int) (12 * getResources().getDisplayMetrics().density);
+                int margin = (int) (2 * getResources().getDisplayMetrics().density);
+
+                GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+                params.width = size;
+                params.height = size;
+                params.setMargins(margin, margin, margin, margin);
+                params.rowSpec = GridLayout.spec(day);
+                params.columnSpec = GridLayout.spec(week);
+                tile.setLayoutParams(params);
+
+                int color = getHeatmapColor(count, maxCount);
+                tile.setBackgroundColor(color);
+
+                gridHeatmap.addView(tile);
+                cal.add(Calendar.DAY_OF_YEAR, 1);
+            }
+        }
+
+        cardHeatmap.setVisibility(View.VISIBLE);
+    }
+
+    private int getHeatmapColor(int count, int maxCount) {
+        if (count == 0)
+            return Color.parseColor("#EBEDF0");
+
+        float intensity = (float) count / maxCount;
+        if (intensity <= 0.25f)
+            return Color.parseColor("#C6E48B");
+        else if (intensity <= 0.50f)
+            return Color.parseColor("#7BC96F");
+        else if (intensity <= 0.75f)
+            return Color.parseColor("#239A3B");
+        else
+            return Color.parseColor("#196127");
+    }
+
+    private int getCodeforcesColor(int rating) {
+        if (rating < 1200)
+            return getColor(R.color.cf_newbie);
+        else if (rating < 1400)
+            return getColor(R.color.cf_pupil);
+        else if (rating < 1600)
+            return getColor(R.color.cf_specialist);
+        else if (rating < 1900)
+            return getColor(R.color.cf_expert);
+        else if (rating < 2100)
+            return getColor(R.color.cf_candidate_master);
+        else if (rating < 2400)
+            return getColor(R.color.cf_master);
+        else
+            return getColor(R.color.cf_grandmaster);
+    }
+
+    private String getCodeforcesRank(int rating) {
+        if (rating < 1200)
+            return "Newbie";
+        else if (rating < 1400)
+            return "Pupil";
+        else if (rating < 1600)
+            return "Specialist";
+        else if (rating < 1900)
+            return "Expert";
+        else if (rating < 2100)
+            return "Candidate Master";
+        else if (rating < 2300)
+            return "Master";
+        else if (rating < 2400)
+            return "International Master";
+        else if (rating < 2600)
+            return "Grandmaster";
+        else if (rating < 3000)
+            return "International Grandmaster";
+        else
+            return "Legendary Grandmaster";
     }
 }

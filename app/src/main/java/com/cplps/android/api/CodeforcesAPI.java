@@ -21,4 +21,8 @@ public interface CodeforcesAPI {
             @Query("handle") String handle,
             @Query("from") int from,
             @Query("count") int count);
+
+    // Get list of contests
+    @GET("contest.list")
+    Call<CodeforcesResponse<List<CFContest>>> getContestList(@Query("gym") boolean gym);
 }
