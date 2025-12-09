@@ -9,8 +9,8 @@
     <color name="white">#FFFFFFFF</color>
     
     <!-- App Colors -->
-    <color name="primary">#2196F3</color>
-    <color name="primary_dark">#1976D2</color>
+    <color name="primary">#1565C0</color>
+    <color name="primary_dark">#0D47A1</color>
     <color name="accent">#FF5722</color>
     <color name="background">#F5F5F5</color>
     <color name="surface">#FFFFFF</color>

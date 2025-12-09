@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.cplps.android.database.DatabaseHelper;
+import com.cplps.android.utils.SessionManager;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,6 +17,7 @@ public class SolvedProblemsActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private TextView textViewNoProblem;
     private DatabaseHelper databaseHelper;
+    private SessionManager sessionManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,6 +30,7 @@ public class SolvedProblemsActivity extends AppCompatActivity {
         }
 
         databaseHelper = new DatabaseHelper(this);
+        sessionManager = new SessionManager(this);
         recyclerView = findViewById(R.id.recyclerViewProblems);
         textViewNoProblem = findViewById(R.id.textViewNoProblems);
 
@@ -37,8 +40,18 @@ public class SolvedProblemsActivity extends AppCompatActivity {
     }
 
     private void loadSolvedProblems() {
-        // Get Codeforces platform ID
-        Cursor platformCursor = databaseHelper.getPlatform(1, "Codeforces");
+        // Get current user ID from session
+        String username = sessionManager.getUsername();
+        if (username == null) {
+            textViewNoProblem.setVisibility(View.VISIBLE);
+            recyclerView.setVisibility(View.GONE);
+            return;
+        }
+
+        int userId = databaseHelper.getUserIdByUsername(username);
+
+        // Get Codeforces platform ID for this user
+        Cursor platformCursor = databaseHelper.getPlatform(userId, "Codeforces");
 
         if (platformCursor != null && platformCursor.moveToFirst()) {
             int platformId = platformCursor.getInt(platformCursor.getColumnIndexOrThrow("platform_id"));
