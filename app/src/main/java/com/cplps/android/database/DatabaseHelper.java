@@ -217,18 +217,30 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return exists;
     }
 
-    // Check if email already exists
+    // Check if email exists
     public boolean isEmailExists(String email) {
         SQLiteDatabase db = this.getReadableDatabase();
-        String query = "SELECT * FROM " + TABLE_USERS + " WHERE " + COLUMN_EMAIL + " = ?";
-
-        Cursor cursor = db.rawQuery(query, new String[] { email });
+        Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_USERS + " WHERE " + COLUMN_EMAIL + " = ?",
+                new String[] { email });
         boolean exists = cursor.getCount() > 0;
-
         cursor.close();
         db.close();
-
         return exists;
+    }
+
+    // Get user ID by username
+    public int getUserIdByUsername(String username) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(
+                "SELECT " + COLUMN_USER_ID + " FROM " + TABLE_USERS + " WHERE " + COLUMN_USERNAME + " = ?",
+                new String[] { username });
+        int userId = 1; // Default to 1 if not found
+        if (cursor.moveToFirst()) {
+            userId = cursor.getInt(0);
+        }
+        cursor.close();
+        db.close();
+        return userId;
     }
 
     // Get username from email or username

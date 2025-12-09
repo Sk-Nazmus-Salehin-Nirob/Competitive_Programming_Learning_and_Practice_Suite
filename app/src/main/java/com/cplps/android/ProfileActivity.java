@@ -26,7 +26,7 @@ public class ProfileActivity extends AppCompatActivity {
 
     private TextView textViewUsername, textViewCFHandle, textViewCFRating, textViewCFSolved, textViewTotalSolved;
     private TextInputEditText editTextCFHandle;
-    private MaterialButton buttonAddCFHandle, buttonSyncCF, buttonViewSolved;
+    private MaterialButton buttonAddCFHandle, buttonSyncCF, buttonChangeHandle;
     private LinearLayout layoutAddHandle, layoutHandleInfo;
     private LineChart chartRating;
     private SessionManager sessionManager;
@@ -58,6 +58,7 @@ public class ProfileActivity extends AppCompatActivity {
         editTextCFHandle = findViewById(R.id.editTextCFHandle);
         buttonAddCFHandle = findViewById(R.id.buttonAddCFHandle);
         buttonSyncCF = findViewById(R.id.buttonSyncCF);
+        buttonChangeHandle = findViewById(R.id.buttonChangeHandle);
         layoutAddHandle = findViewById(R.id.layoutAddHandle);
         layoutHandleInfo = findViewById(R.id.layoutHandleInfo);
         chartRating = findViewById(R.id.chartRating);
@@ -67,6 +68,8 @@ public class ProfileActivity extends AppCompatActivity {
         String username = sessionManager.getUsername();
         if (username != null) {
             textViewUsername.setText(username);
+            // Get actual user ID from database
+            currentUserId = databaseHelper.getUserIdByUsername(username);
         }
     }
 
@@ -100,6 +103,14 @@ public class ProfileActivity extends AppCompatActivity {
     private void setupListeners() {
         buttonAddCFHandle.setOnClickListener(v -> addCodeforcesHandle());
         buttonSyncCF.setOnClickListener(v -> syncData());
+        buttonChangeHandle.setOnClickListener(v -> showChangeHandleForm());
+    }
+
+    private void showChangeHandleForm() {
+        layoutHandleInfo.setVisibility(View.GONE);
+        layoutAddHandle.setVisibility(View.VISIBLE);
+        editTextCFHandle.setText(currentHandle);
+        editTextCFHandle.requestFocus();
     }
 
     private void addCodeforcesHandle() {
