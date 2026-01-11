@@ -10,12 +10,10 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import com.cplps.android.utils.SessionManager;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private BottomNavigationView bottomNavigation;
     private SessionManager sessionManager;
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
@@ -46,17 +44,44 @@ public class MainActivity extends AppCompatActivity {
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
 
+        // Set the first item as selected by default
+        navigationView.setCheckedItem(R.id.nav_problems);
+
         navigationView.setNavigationItemSelectedListener(menuItem -> {
             int id = menuItem.getItemId();
-            if (id == R.id.nav_solved_problems) {
-                startActivity(new Intent(MainActivity.this, SolvedProblemsActivity.class));
+
+            if (id == R.id.nav_problems) {
+                // Already on main screen (Problems)
+                drawerLayout.closeDrawer(GravityCompat.START);
+                return true;
+            } else if (id == R.id.nav_profile) {
+                // Navigate to Profile screen
+                Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
+                startActivity(intent);
+                drawerLayout.closeDrawer(GravityCompat.START);
+                return true;
+            } else if (id == R.id.nav_bookmarks) {
+                // Navigate to Bookmarks screen
+                Intent intent = new Intent(MainActivity.this, BookmarksActivity.class);
+                startActivity(intent);
+                drawerLayout.closeDrawer(GravityCompat.START);
+                return true;
+            } else if (id == R.id.nav_learning) {
+                // Navigate to Learning screen
+                Intent intent = new Intent(MainActivity.this, LearningActivity.class);
+                startActivity(intent);
+                drawerLayout.closeDrawer(GravityCompat.START);
+                return true;
+            } else if (id == R.id.nav_solved_problems) {
+                // Navigate to Solved Problems screen
+                Intent intent = new Intent(MainActivity.this, SolvedProblemsActivity.class);
+                startActivity(intent);
                 drawerLayout.closeDrawer(GravityCompat.START);
                 return true;
             }
+
             return false;
         });
-
-        setupBottomNavigation();
     }
 
     @Override
@@ -85,32 +110,5 @@ public class MainActivity extends AppCompatActivity {
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
-    }
-
-    private void setupBottomNavigation() {
-        bottomNavigation = findViewById(R.id.bottom_navigation);
-        bottomNavigation.setOnItemSelectedListener(item -> {
-            int itemId = item.getItemId();
-
-            if (itemId == R.id.nav_problems) {
-                // Navigate to Problems screen
-                return true;
-            } else if (itemId == R.id.nav_profile) {
-                // Navigate to Profile screen
-                Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
-                startActivity(intent);
-                return true;
-            } else if (itemId == R.id.nav_bookmarks) {
-                // Navigate to Bookmarks screen
-                Intent intent = new Intent(MainActivity.this, BookmarksActivity.class);
-                startActivity(intent);
-                return true;
-            } else if (itemId == R.id.nav_learning) {
-                // Navigate to Learning screen
-                return true;
-            }
-
-            return false;
-        });
     }
 }

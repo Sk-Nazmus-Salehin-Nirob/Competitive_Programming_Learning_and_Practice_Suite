@@ -62,6 +62,12 @@
             android:name=".MainActivity"
             android:exported="false">
         </activity>
+        <!-- Learning Activity -->
+        <activity
+            android:name=".LearningActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
     </application>
 
 </manifest>
