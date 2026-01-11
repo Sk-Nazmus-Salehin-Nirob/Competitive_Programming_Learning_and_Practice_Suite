@@ -18,6 +18,9 @@ public class CFProblem {
     @SerializedName("type")
     private String type;
 
+    @SerializedName("tags")
+    private java.util.List<String> tags;
+
     public int getContestId() {
         return contestId;
     }
@@ -36,6 +39,10 @@ public class CFProblem {
 
     public String getType() {
         return type;
+    }
+
+    public java.util.List<String> getTags() {
+        return tags;
     }
 
     public String getProblemCode() {

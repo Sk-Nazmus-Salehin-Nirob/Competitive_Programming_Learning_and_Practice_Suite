@@ -81,6 +81,11 @@
             android:parentActivityName=".MainActivity" />
 
         <activity
+            android:name=".ProblemsActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
+        <activity
             android:name=".LearningTopicActivity"
             android:exported="false"
             android:parentActivityName=".LearningActivity" />

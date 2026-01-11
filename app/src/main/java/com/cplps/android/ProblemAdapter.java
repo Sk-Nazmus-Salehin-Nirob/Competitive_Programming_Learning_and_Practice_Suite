@@ -19,6 +19,8 @@ public class ProblemAdapter extends RecyclerView.Adapter<ProblemAdapter.ViewHold
     private List<CFProblem> problems;
     private Context context;
 
+    private java.util.Set<String> solvedProblems = new java.util.HashSet<>();
+
     public ProblemAdapter(Context context) {
         this.context = context;
         this.problems = new ArrayList<>();
@@ -26,6 +28,11 @@ public class ProblemAdapter extends RecyclerView.Adapter<ProblemAdapter.ViewHold
 
     public void setProblems(List<CFProblem> problems) {
         this.problems = problems;
+        notifyDataSetChanged();
+    }
+
+    public void setSolvedProblems(java.util.Set<String> solvedProblems) {
+        this.solvedProblems = solvedProblems;
         notifyDataSetChanged();
     }
 
@@ -42,7 +49,7 @@ public class ProblemAdapter extends RecyclerView.Adapter<ProblemAdapter.ViewHold
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         CFProblem problem = problems.get(position);
 
-        String contestId = problem.getContestId() != null ? String.valueOf(problem.getContestId()) : "";
+        String contestId = problem.getContestId() > 0 ? String.valueOf(problem.getContestId()) : "";
         String index = problem.getIndex() != null ? problem.getIndex() : "";
         String code = contestId + index;
 
@@ -54,20 +61,32 @@ public class ProblemAdapter extends RecyclerView.Adapter<ProblemAdapter.ViewHold
         holder.textRating.setText(ratingText);
         holder.textRating.setTextColor(getRatingColor(rating));
 
-        // Hide date if item_problem expects it but we don't have it (or show tags)
-        holder.textDate.setVisibility(View.GONE);
-        // Or reuse textDate to show tags?
-        StringBuilder tags = new StringBuilder();
-        if (problem.getTags() != null) {
-            for (String tag : problem.getTags()) {
-                if (tags.length() > 0)
-                    tags.append(", ");
-                tags.append(tag);
-            }
-        }
-        if (tags.length() > 0) {
+        // Solved Check
+        if (solvedProblems.contains(code)) {
+            holder.itemView.setBackgroundColor(Color.parseColor("#E0F2F1")); // Light Green
             holder.textDate.setVisibility(View.VISIBLE);
-            holder.textDate.setText(tags.toString());
+            holder.textDate.setText("ACCEPTED");
+            holder.textDate.setTextColor(Color.parseColor("#00695C"));
+            holder.textDate.setTypeface(null, android.graphics.Typeface.BOLD);
+        } else {
+            holder.itemView.setBackgroundColor(Color.WHITE);
+            // Default Tag view
+            StringBuilder tags = new StringBuilder();
+            if (problem.getTags() != null) {
+                for (String tag : problem.getTags()) {
+                    if (tags.length() > 0)
+                        tags.append(", ");
+                    tags.append(tag);
+                }
+            }
+            if (tags.length() > 0) {
+                holder.textDate.setVisibility(View.VISIBLE);
+                holder.textDate.setText(tags.toString());
+                holder.textDate.setTextColor(Color.GRAY);
+                holder.textDate.setTypeface(null, android.graphics.Typeface.NORMAL);
+            } else {
+                holder.textDate.setVisibility(View.GONE);
+            }
         }
 
         holder.itemView.setOnClickListener(v -> {
