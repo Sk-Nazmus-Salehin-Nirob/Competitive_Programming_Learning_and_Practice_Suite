@@ -11,7 +11,7 @@ import java.security.NoSuchAlgorithmException;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "CPLPS.db";
-    private static final int DATABASE_VERSION = 6;
+    private static final int DATABASE_VERSION = 7; // Upgraded for Learning features
 
     // Users table
     private static final String TABLE_USERS = "users";
@@ -72,6 +72,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_NOTE_USER_ID = "user_id";
     private static final String COLUMN_NOTE_CONTENT = "content";
     private static final String COLUMN_NOTE_CREATED_AT = "created_at";
+
+    // Learning Topics table
+    private static final String TABLE_LEARNING_TOPICS = "learning_topics";
+    private static final String COLUMN_TOPIC_ID = "topic_id";
+    private static final String COLUMN_TOPIC_USER_ID = "user_id";
+    private static final String COLUMN_TOPIC_TITLE = "title";
+    private static final String COLUMN_TOPIC_CREATED_AT = "created_at";
+
+    // Learning Resources table
+    private static final String TABLE_LEARNING_RESOURCES = "learning_resources";
+    private static final String COLUMN_RESOURCE_ID = "resource_id";
+    private static final String COLUMN_RESOURCE_TOPIC_ID = "topic_id";
+    private static final String COLUMN_RESOURCE_TYPE = "type"; // "text", "file"
+    private static final String COLUMN_RESOURCE_CONTENT = "content"; // text content or file path
+    private static final String COLUMN_RESOURCE_NAME = "name"; // display name for files
+    private static final String COLUMN_RESOURCE_CREATED_AT = "created_at";
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -167,6 +183,28 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + "FOREIGN KEY(" + COLUMN_NOTE_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COLUMN_USER_ID + ")"
                 + ")";
         db.execSQL(CREATE_NOTES_TABLE);
+
+        // Learning tables
+        String CREATE_TOPICS_TABLE = "CREATE TABLE " + TABLE_LEARNING_TOPICS + "("
+                + COLUMN_TOPIC_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_TOPIC_USER_ID + " INTEGER NOT NULL,"
+                + COLUMN_TOPIC_TITLE + " TEXT NOT NULL,"
+                + COLUMN_TOPIC_CREATED_AT + " INTEGER NOT NULL,"
+                + "FOREIGN KEY(" + COLUMN_TOPIC_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COLUMN_USER_ID + ")"
+                + ")";
+        db.execSQL(CREATE_TOPICS_TABLE);
+
+        String CREATE_RESOURCES_TABLE = "CREATE TABLE " + TABLE_LEARNING_RESOURCES + "("
+                + COLUMN_RESOURCE_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_RESOURCE_TOPIC_ID + " INTEGER NOT NULL,"
+                + COLUMN_RESOURCE_TYPE + " TEXT NOT NULL,"
+                + COLUMN_RESOURCE_CONTENT + " TEXT,"
+                + COLUMN_RESOURCE_NAME + " TEXT,"
+                + COLUMN_RESOURCE_CREATED_AT + " INTEGER NOT NULL,"
+                + "FOREIGN KEY(" + COLUMN_RESOURCE_TOPIC_ID + ") REFERENCES " + TABLE_LEARNING_TOPICS + "("
+                + COLUMN_TOPIC_ID + ")"
+                + ")";
+        db.execSQL(CREATE_RESOURCES_TABLE);
     }
 
     @Override
@@ -265,6 +303,29 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     + "FOREIGN KEY(" + COLUMN_NOTE_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COLUMN_USER_ID + ")"
                     + ")";
             db.execSQL(CREATE_NOTES_TABLE);
+        }
+
+        if (oldVersion < 7) {
+            String CREATE_TOPICS_TABLE = "CREATE TABLE " + TABLE_LEARNING_TOPICS + "("
+                    + COLUMN_TOPIC_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + COLUMN_TOPIC_USER_ID + " INTEGER NOT NULL,"
+                    + COLUMN_TOPIC_TITLE + " TEXT NOT NULL,"
+                    + COLUMN_TOPIC_CREATED_AT + " INTEGER NOT NULL,"
+                    + "FOREIGN KEY(" + COLUMN_TOPIC_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COLUMN_USER_ID + ")"
+                    + ")";
+            db.execSQL(CREATE_TOPICS_TABLE);
+
+            String CREATE_RESOURCES_TABLE = "CREATE TABLE " + TABLE_LEARNING_RESOURCES + "("
+                    + COLUMN_RESOURCE_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + COLUMN_RESOURCE_TOPIC_ID + " INTEGER NOT NULL,"
+                    + COLUMN_RESOURCE_TYPE + " TEXT NOT NULL,"
+                    + COLUMN_RESOURCE_CONTENT + " TEXT,"
+                    + COLUMN_RESOURCE_NAME + " TEXT,"
+                    + COLUMN_RESOURCE_CREATED_AT + " INTEGER NOT NULL,"
+                    + "FOREIGN KEY(" + COLUMN_RESOURCE_TOPIC_ID + ") REFERENCES " + TABLE_LEARNING_TOPICS + "("
+                    + COLUMN_TOPIC_ID + ")"
+                    + ")";
+            db.execSQL(CREATE_RESOURCES_TABLE);
         }
     }
 
@@ -683,5 +744,58 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         int result = db.delete(TABLE_NOTES, COLUMN_NOTE_ID + " = ?", new String[] { String.valueOf(noteId) });
         // db.close();
         return result > 0;
+    }
+
+    // ===== LEARNING METHODS =====
+
+    public long addLearningTopic(int userId, String title) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_TOPIC_USER_ID, userId);
+        values.put(COLUMN_TOPIC_TITLE, title);
+        values.put(COLUMN_TOPIC_CREATED_AT, System.currentTimeMillis());
+        return db.insert(TABLE_LEARNING_TOPICS, null, values);
+    }
+
+    public Cursor getLearningTopics(int userId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.rawQuery(
+                "SELECT * FROM " + TABLE_LEARNING_TOPICS + " WHERE " + COLUMN_TOPIC_USER_ID + " = ? ORDER BY "
+                        + COLUMN_TOPIC_CREATED_AT + " DESC",
+                new String[] { String.valueOf(userId) });
+    }
+
+    public boolean deleteLearningTopic(int topicId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Delete resources first
+        db.delete(TABLE_LEARNING_RESOURCES, COLUMN_RESOURCE_TOPIC_ID + " = ?",
+                new String[] { String.valueOf(topicId) });
+        // Delete topic
+        return db.delete(TABLE_LEARNING_TOPICS, COLUMN_TOPIC_ID + " = ?", new String[] { String.valueOf(topicId) }) > 0;
+    }
+
+    public long addLearningResource(int topicId, String type, String content, String name) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_RESOURCE_TOPIC_ID, topicId);
+        values.put(COLUMN_RESOURCE_TYPE, type);
+        values.put(COLUMN_RESOURCE_CONTENT, content);
+        values.put(COLUMN_RESOURCE_NAME, name);
+        values.put(COLUMN_RESOURCE_CREATED_AT, System.currentTimeMillis());
+        return db.insert(TABLE_LEARNING_RESOURCES, null, values);
+    }
+
+    public Cursor getLearningResources(int topicId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.rawQuery(
+                "SELECT * FROM " + TABLE_LEARNING_RESOURCES + " WHERE " + COLUMN_RESOURCE_TOPIC_ID + " = ? ORDER BY "
+                        + COLUMN_RESOURCE_CREATED_AT + " ASC",
+                new String[] { String.valueOf(topicId) });
+    }
+
+    public boolean deleteLearningResource(int resourceId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        return db.delete(TABLE_LEARNING_RESOURCES, COLUMN_RESOURCE_ID + " = ?",
+                new String[] { String.valueOf(resourceId) }) > 0;
     }
 }
