@@ -11,7 +11,7 @@ import java.security.NoSuchAlgorithmException;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "CPLPS.db";
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 4;
 
     // Users table
     private static final String TABLE_USERS = "users";
@@ -47,6 +47,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_RATING_CHANGE = "rating_change";
     private static final String COLUMN_NEW_RATING = "new_rating";
     private static final String COLUMN_RANK = "rank";
+
+    // Bookmarked problems table
+    private static final String TABLE_BOOKMARKED_PROBLEMS = "bookmarked_problems";
+    private static final String COLUMN_BOOKMARK_ID = "bookmark_id";
+    private static final String COLUMN_BOOKMARK_USER_ID = "user_id";
+    private static final String COLUMN_BOOKMARK_URL = "problem_url";
+    private static final String COLUMN_BOOKMARK_PROBLEM_CODE = "problem_code";
+    private static final String COLUMN_BOOKMARK_PROBLEM_NAME = "problem_name";
+    private static final String COLUMN_BOOKMARK_PROBLEM_RATING = "problem_rating";
+    private static final String COLUMN_BOOKMARK_CATEGORY = "category"; // "to_solve" or "interesting"
+    private static final String COLUMN_BOOKMARK_ADDED_AT = "added_at";
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -106,6 +117,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + ")"
                 + ")";
         db.execSQL(CREATE_CONTESTS_TABLE);
+
+        String CREATE_BOOKMARKED_PROBLEMS_TABLE = "CREATE TABLE " + TABLE_BOOKMARKED_PROBLEMS + "("
+                + COLUMN_BOOKMARK_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_BOOKMARK_USER_ID + " INTEGER NOT NULL,"
+                + COLUMN_BOOKMARK_URL + " TEXT NOT NULL,"
+                + COLUMN_BOOKMARK_PROBLEM_CODE + " TEXT NOT NULL,"
+                + COLUMN_BOOKMARK_PROBLEM_NAME + " TEXT,"
+                + COLUMN_BOOKMARK_PROBLEM_RATING + " INTEGER,"
+                + COLUMN_BOOKMARK_CATEGORY + " TEXT NOT NULL,"
+                + COLUMN_BOOKMARK_ADDED_AT + " INTEGER NOT NULL,"
+                + "FOREIGN KEY(" + COLUMN_BOOKMARK_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COLUMN_USER_ID + "),"
+                + "UNIQUE(" + COLUMN_BOOKMARK_USER_ID + "," + COLUMN_BOOKMARK_PROBLEM_CODE + ","
+                + COLUMN_BOOKMARK_CATEGORY + ")"
+                + ")";
+        db.execSQL(CREATE_BOOKMARKED_PROBLEMS_TABLE);
     }
 
     @Override
@@ -155,6 +181,25 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (oldVersion < 3) {
             // Add contest_name column to solved_problems table
             db.execSQL("ALTER TABLE " + TABLE_SOLVED_PROBLEMS + " ADD COLUMN " + COLUMN_PROBLEM_CONTEST + " TEXT");
+        }
+
+        if (oldVersion < 4) {
+            // Add bookmarked_problems table
+            String CREATE_BOOKMARKED_PROBLEMS_TABLE = "CREATE TABLE " + TABLE_BOOKMARKED_PROBLEMS + "("
+                    + COLUMN_BOOKMARK_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + COLUMN_BOOKMARK_USER_ID + " INTEGER NOT NULL,"
+                    + COLUMN_BOOKMARK_URL + " TEXT NOT NULL,"
+                    + COLUMN_BOOKMARK_PROBLEM_CODE + " TEXT NOT NULL,"
+                    + COLUMN_BOOKMARK_PROBLEM_NAME + " TEXT,"
+                    + COLUMN_BOOKMARK_PROBLEM_RATING + " INTEGER,"
+                    + COLUMN_BOOKMARK_CATEGORY + " TEXT NOT NULL,"
+                    + COLUMN_BOOKMARK_ADDED_AT + " INTEGER NOT NULL,"
+                    + "FOREIGN KEY(" + COLUMN_BOOKMARK_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COLUMN_USER_ID
+                    + "),"
+                    + "UNIQUE(" + COLUMN_BOOKMARK_USER_ID + "," + COLUMN_BOOKMARK_PROBLEM_CODE + ","
+                    + COLUMN_BOOKMARK_CATEGORY + ")"
+                    + ")";
+            db.execSQL(CREATE_BOOKMARKED_PROBLEMS_TABLE);
         }
     }
 
@@ -398,5 +443,104 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.close();
 
         return result;
+    }
+
+    // ===== BOOKMARK METHODS =====
+
+    // Add bookmarked problem
+    public long addBookmark(int userId, String problemUrl, String problemCode, String problemName,
+            int problemRating, String category) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+
+        values.put(COLUMN_BOOKMARK_USER_ID, userId);
+        values.put(COLUMN_BOOKMARK_URL, problemUrl);
+        values.put(COLUMN_BOOKMARK_PROBLEM_CODE, problemCode);
+        values.put(COLUMN_BOOKMARK_PROBLEM_NAME, problemName);
+        values.put(COLUMN_BOOKMARK_PROBLEM_RATING, problemRating);
+        values.put(COLUMN_BOOKMARK_CATEGORY, category);
+        values.put(COLUMN_BOOKMARK_ADDED_AT, System.currentTimeMillis());
+
+        long result = db.insertWithOnConflict(TABLE_BOOKMARKED_PROBLEMS, null, values,
+                SQLiteDatabase.CONFLICT_REPLACE);
+        db.close();
+
+        return result;
+    }
+
+    // Get bookmarks by user ID and category
+    public Cursor getBookmarks(int userId, String category) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT * FROM " + TABLE_BOOKMARKED_PROBLEMS + " WHERE "
+                + COLUMN_BOOKMARK_USER_ID + " = ? AND " + COLUMN_BOOKMARK_CATEGORY + " = ? "
+                + "ORDER BY " + COLUMN_BOOKMARK_ADDED_AT + " DESC";
+        return db.rawQuery(query, new String[] { String.valueOf(userId), category });
+    }
+
+    // Get all bookmarks by user ID
+    public Cursor getAllBookmarks(int userId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT * FROM " + TABLE_BOOKMARKED_PROBLEMS + " WHERE "
+                + COLUMN_BOOKMARK_USER_ID + " = ? ORDER BY " + COLUMN_BOOKMARK_ADDED_AT + " DESC";
+        return db.rawQuery(query, new String[] { String.valueOf(userId) });
+    }
+
+    // Delete bookmark
+    public boolean deleteBookmark(int bookmarkId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        int result = db.delete(TABLE_BOOKMARKED_PROBLEMS, COLUMN_BOOKMARK_ID + " = ?",
+                new String[] { String.valueOf(bookmarkId) });
+        db.close();
+        return result > 0;
+    }
+
+    // Check if problem is already solved
+    public boolean isProblemSolved(int userId, String problemCode) {
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        // Get platform ID for Codeforces
+        String platformIdQuery = "SELECT " + COLUMN_PLATFORM_ID + " FROM " + TABLE_PLATFORMS
+                + " WHERE " + COLUMN_USER_ID + " = ? AND " + COLUMN_PLATFORM_NAME + " = 'Codeforces'";
+        Cursor platformCursor = db.rawQuery(platformIdQuery, new String[] { String.valueOf(userId) });
+
+        int platformId = -1;
+        if (platformCursor.moveToFirst()) {
+            platformId = platformCursor.getInt(0);
+        }
+        platformCursor.close();
+
+        if (platformId == -1) {
+            db.close();
+            return false;
+        }
+
+        // Check if problem exists in solved_problems
+        String query = "SELECT COUNT(*) FROM " + TABLE_SOLVED_PROBLEMS + " WHERE "
+                + COLUMN_PLATFORM_ID + " = ? AND " + COLUMN_PROBLEM_CODE + " = ?";
+        Cursor cursor = db.rawQuery(query, new String[] { String.valueOf(platformId), problemCode });
+
+        boolean solved = false;
+        if (cursor.moveToFirst()) {
+            solved = cursor.getInt(0) > 0;
+        }
+
+        cursor.close();
+        db.close();
+        return solved;
+    }
+
+    // Get bookmark count by category
+    public int getBookmarkCount(int userId, String category) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_BOOKMARKED_PROBLEMS
+                + " WHERE " + COLUMN_BOOKMARK_USER_ID + " = ? AND " + COLUMN_BOOKMARK_CATEGORY + " = ?",
+                new String[] { String.valueOf(userId), category });
+        int count = 0;
+        if (cursor.moveToFirst()) {
+            count = cursor.getInt(0);
+        }
+        cursor.close();
+        db.close();
+        return count;
     }
 }

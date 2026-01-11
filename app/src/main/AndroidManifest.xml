@@ -51,6 +51,12 @@
             android:name=".ProfileActivity"
             android:exported="false" />
         
+        <!-- Bookmarks Activity -->
+        <activity
+            android:name=".BookmarksActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+        
         <!-- Main Activity -->
         <activity
             android:name=".MainActivity"

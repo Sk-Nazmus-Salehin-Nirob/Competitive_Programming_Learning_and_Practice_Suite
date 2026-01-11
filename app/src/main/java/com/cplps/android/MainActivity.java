@@ -102,6 +102,8 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             } else if (itemId == R.id.nav_bookmarks) {
                 // Navigate to Bookmarks screen
+                Intent intent = new Intent(MainActivity.this, BookmarksActivity.class);
+                startActivity(intent);
                 return true;
             } else if (itemId == R.id.nav_learning) {
                 // Navigate to Learning screen

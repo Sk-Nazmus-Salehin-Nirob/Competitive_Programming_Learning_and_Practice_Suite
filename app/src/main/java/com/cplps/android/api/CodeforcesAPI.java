@@ -25,4 +25,11 @@ public interface CodeforcesAPI {
     // Get list of contests
     @GET("contest.list")
     Call<CodeforcesResponse<List<CFContest>>> getContestList(@Query("gym") boolean gym);
+
+    // Get problems from a contest
+    @GET("contest.standings")
+    Call<CodeforcesResponse<CFContestStandings>> getContestStandings(
+            @Query("contestId") int contestId,
+            @Query("from") int from,
+            @Query("count") int count);
 }
