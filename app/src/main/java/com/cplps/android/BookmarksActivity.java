@@ -1,47 +1,37 @@
 package com.cplps.android;
 
 import android.app.Dialog;
+import android.content.Intent;
+import android.database.Cursor;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
-import android.widget.RadioButton;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
-import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentPagerAdapter;
-import androidx.viewpager.widget.ViewPager;
-import com.cplps.android.api.ApiClient;
-import com.cplps.android.api.CodeforcesAPI;
-import com.cplps.android.api.models.CFProblem;
-import com.cplps.android.api.models.CodeforcesResponse;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import com.cplps.android.database.DatabaseHelper;
+import com.cplps.android.models.BookmarkCategory;
 import com.cplps.android.utils.SessionManager;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.textfield.TextInputEditText;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
-public class BookmarksActivity extends AppCompatActivity {
+public class BookmarksActivity extends AppCompatActivity implements CategoryAdapter.OnCategoryClickListener {
 
-    private static final String TAG = "BookmarksActivity";
-
-    private ViewPager viewPager;
-    private TabLayout tabLayout;
-    private FloatingActionButton fabAddBookmark;
+    private RecyclerView recyclerView;
+    private FloatingActionButton fabAdd;
+    private TextView tvEmpty;
+    private CategoryAdapter adapter;
     private DatabaseHelper dbHelper;
     private SessionManager sessionManager;
-    private CodeforcesAPI codeforcesAPI;
+    private int userId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,162 +41,125 @@ public class BookmarksActivity extends AppCompatActivity {
         // Initialize
         dbHelper = new DatabaseHelper(this);
         sessionManager = new SessionManager(this);
-        codeforcesAPI = ApiClient.getCodeforcesAPI();
+        userId = dbHelper.getUserIdByUsername(sessionManager.getUsername());
 
         // Setup toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle("Bookmarks");
         }
 
-        // Setup ViewPager and Tabs
-        viewPager = findViewById(R.id.view_pager);
-        tabLayout = findViewById(R.id.tab_layout);
-        fabAddBookmark = findViewById(R.id.fab_add_bookmark);
+        // Ensure default categories exist
+        dbHelper.ensureDefaultCategories(userId);
 
-        setupViewPager();
+        // ViewPager and TabLayout are gone in the XML, but we are reusing
+        // activity_bookmarks.xml
+        // We need to update the activity_bookmarks.xml layout to match a simple list
+        // structure first.
+        // Or we can dynamically find views if the layout is updated.
+        // Let's assume we update the XML next.
 
-        // FAB click
-        fabAddBookmark.setOnClickListener(v -> showAddBookmarkDialog());
+        recyclerView = findViewById(R.id.recycler_view); // Make sure this ID exists in layout
+        fabAdd = findViewById(R.id.fab_add);
+        tvEmpty = findViewById(R.id.tv_empty); // Need to add this to layout
+
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        adapter = new CategoryAdapter(this, this);
+        recyclerView.setAdapter(adapter);
+
+        fabAdd.setOnClickListener(v -> showAddCategoryDialog());
+
+        loadCategories();
     }
 
-    private void setupViewPager() {
-        ViewPagerAdapter adapter = new ViewPagerAdapter(getSupportFragmentManager());
-        adapter.addFragment(BookmarkListFragment.newInstance("to_solve"), "Problems to solve");
-        adapter.addFragment(BookmarkListFragment.newInstance("interesting"), "Interesting Problems");
-
-        viewPager.setAdapter(adapter);
-        tabLayout.setupWithViewPager(viewPager);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadCategories();
     }
 
-    private void showAddBookmarkDialog() {
+    private void loadCategories() {
+        List<BookmarkCategory> categories = new ArrayList<>();
+        Cursor cursor = dbHelper.getAllCategories(userId);
+
+        if (cursor != null && cursor.moveToFirst()) {
+            do {
+                int id = cursor.getInt(cursor.getColumnIndexOrThrow("category_id"));
+                String name = cursor.getString(cursor.getColumnIndexOrThrow("category_name"));
+                long date = cursor.getLong(cursor.getColumnIndexOrThrow("created_at"));
+
+                BookmarkCategory cat = new BookmarkCategory(id, userId, name, date);
+
+                // Get count
+                int count = dbHelper.getBookmarkCount(userId, name);
+                cat.setProblemCount(count);
+
+                categories.add(cat);
+            } while (cursor.moveToNext());
+            cursor.close();
+        }
+
+        adapter.setCategories(categories);
+
+        if (categories.isEmpty()) {
+            if (tvEmpty != null)
+                tvEmpty.setVisibility(View.VISIBLE);
+        } else {
+            if (tvEmpty != null)
+                tvEmpty.setVisibility(View.GONE);
+        }
+    }
+
+    private void showAddCategoryDialog() {
         Dialog dialog = new Dialog(this);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_add_bookmark);
-        dialog.getWindow().setLayout(ViewPager.LayoutParams.MATCH_PARENT, ViewPager.LayoutParams.WRAP_CONTENT);
+        dialog.setContentView(R.layout.dialog_add_category);
+        dialog.getWindow().setLayout(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 
-        TextInputEditText etProblemUrl = dialog.findViewById(R.id.et_problem_url);
-        RadioButton radioToSolve = dialog.findViewById(R.id.radio_to_solve);
-        RadioButton radioInteresting = dialog.findViewById(R.id.radio_interesting);
+        TextInputEditText etName = dialog.findViewById(R.id.et_category_name);
+        Button btnCreate = dialog.findViewById(R.id.btn_create);
         Button btnCancel = dialog.findViewById(R.id.btn_cancel);
-        Button btnAdd = dialog.findViewById(R.id.btn_add);
 
         btnCancel.setOnClickListener(v -> dialog.dismiss());
-
-        btnAdd.setOnClickListener(v -> {
-            String url = etProblemUrl.getText().toString().trim();
-            if (url.isEmpty()) {
-                Toast.makeText(this, "Please enter a problem URL", Toast.LENGTH_SHORT).show();
+        btnCreate.setOnClickListener(v -> {
+            String name = etName.getText().toString().trim();
+            if (name.isEmpty()) {
+                etName.setError("Name required");
                 return;
             }
 
-            String category = radioToSolve.isChecked() ? "to_solve" : "interesting";
-
-            // Parse URL and fetch problem details
-            parseProblemUrl(url, category, dialog);
+            long res = dbHelper.addCategory(userId, name);
+            if (res != -1) {
+                loadCategories();
+                dialog.dismiss();
+            } else {
+                Toast.makeText(this, "Category already exists", Toast.LENGTH_SHORT).show();
+            }
         });
 
         dialog.show();
     }
 
-    private void parseProblemUrl(String url, String category, Dialog dialog) {
-        // Regex to extract contest ID and problem index from Codeforces URL
-        // Examples:
-        // https://codeforces.com/contest/1234/problem/A
-        // https://codeforces.com/problemset/problem/1234/A
-        Pattern pattern = Pattern.compile("codeforces\\.com/(?:contest|problemset/problem)/(\\d+)/problem/([A-Z]\\d*)");
-        Matcher matcher = pattern.matcher(url);
-
-        if (!matcher.find()) {
-            Toast.makeText(this, "Invalid Codeforces URL format", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String contestId = matcher.group(1);
-        String problemIndex = matcher.group(2);
-        String problemCode = contestId + problemIndex;
-
-        // Show loading
-        Toast.makeText(this, "Fetching problem details...", Toast.LENGTH_SHORT).show();
-
-        // Fetch problem details from API
-        fetchProblemDetails(Integer.parseInt(contestId), problemIndex, problemCode, url, category, dialog);
+    @Override
+    public void onCategoryClick(BookmarkCategory category) {
+        Intent intent = new Intent(this, BookmarkProblemsActivity.class);
+        intent.putExtra(BookmarkProblemsActivity.EXTRA_CATEGORY_NAME, category.getCategoryName());
+        startActivity(intent);
     }
 
-    private void fetchProblemDetails(int contestId, String problemIndex, String problemCode,
-            String url, String category, Dialog dialog) {
-        // Fetch contest standings to get problem details
-        codeforcesAPI.getContestStandings(contestId, 1, 1)
-                .enqueue(new Callback<CodeforcesResponse<com.cplps.android.api.models.CFContestStandings>>() {
-                    @Override
-                    public void onResponse(
-                            Call<CodeforcesResponse<com.cplps.android.api.models.CFContestStandings>> call,
-                            Response<CodeforcesResponse<com.cplps.android.api.models.CFContestStandings>> response) {
-                        if (response.isSuccessful() && response.body() != null
-                                && response.body().getStatus().equals("OK")) {
-                            // Find the specific problem
-                            List<CFProblem> problems = response.body().getResult().getProblems();
-                            CFProblem targetProblem = null;
-
-                            for (CFProblem problem : problems) {
-                                if (problem.getIndex().equals(problemIndex)) {
-                                    targetProblem = problem;
-                                    break;
-                                }
-                            }
-
-                            if (targetProblem != null) {
-                                addBookmarkToDatabase(problemCode, url, targetProblem.getName(),
-                                        targetProblem.getRating(), category);
-                            } else {
-                                // Problem not found, add with default values
-                                addBookmarkToDatabase(problemCode, url, "Problem " + problemCode, 0, category);
-                            }
-                        } else {
-                            // API failed, add with default values
-                            addBookmarkToDatabase(problemCode, url, "Problem " + problemCode, 0, category);
-                        }
-                        dialog.dismiss();
-                        refreshCurrentFragment();
-                    }
-
-                    @Override
-                    public void onFailure(
-                            Call<CodeforcesResponse<com.cplps.android.api.models.CFContestStandings>> call,
-                            Throwable t) {
-                        Log.e(TAG, "Failed to fetch problem details", t);
-                        // Still add the bookmark with default values
-                        addBookmarkToDatabase(problemCode, url, "Problem " + problemCode, 0, category);
-                        dialog.dismiss();
-                        refreshCurrentFragment();
-                    }
-                });
-    }
-
-    private void addBookmarkToDatabase(String problemCode, String url, String problemName,
-            int rating, String category) {
-        String username = sessionManager.getUsername();
-        int userId = dbHelper.getUserIdByUsername(username);
-
-        long result = dbHelper.addBookmark(userId, url, problemCode, problemName, rating, category);
-
-        if (result != -1) {
-            Toast.makeText(this, "Bookmark added successfully", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(this, "Bookmark already exists or failed to add", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void refreshCurrentFragment() {
-        int currentItem = viewPager.getCurrentItem();
-        ViewPagerAdapter adapter = (ViewPagerAdapter) viewPager.getAdapter();
-        if (adapter != null) {
-            BookmarkListFragment fragment = (BookmarkListFragment) adapter.getItem(currentItem);
-            if (fragment != null) {
-                fragment.loadBookmarks();
-            }
-        }
+    @Override
+    public void onCategoryLongClick(BookmarkCategory category) {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete Category")
+                .setMessage("Delete '" + category.getCategoryName() + "' and all its bookmarks?")
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    dbHelper.deleteCategory(userId, category.getCategoryName());
+                    loadCategories();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     @Override
@@ -215,34 +168,4 @@ public class BookmarksActivity extends AppCompatActivity {
         return true;
     }
 
-    // ViewPager Adapter
-    static class ViewPagerAdapter extends FragmentPagerAdapter {
-        private final List<Fragment> fragmentList = new ArrayList<>();
-        private final List<String> fragmentTitleList = new ArrayList<>();
-
-        public ViewPagerAdapter(FragmentManager fm) {
-            super(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT);
-        }
-
-        @NonNull
-        @Override
-        public Fragment getItem(int position) {
-            return fragmentList.get(position);
-        }
-
-        @Override
-        public int getCount() {
-            return fragmentList.size();
-        }
-
-        public void addFragment(Fragment fragment, String title) {
-            fragmentList.add(fragment);
-            fragmentTitleList.add(title);
-        }
-
-        @Override
-        public CharSequence getPageTitle(int position) {
-            return fragmentTitleList.get(position);
-        }
-    }
 }

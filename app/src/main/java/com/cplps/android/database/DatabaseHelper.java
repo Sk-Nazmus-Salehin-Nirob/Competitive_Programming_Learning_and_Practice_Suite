@@ -11,7 +11,7 @@ import java.security.NoSuchAlgorithmException;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "CPLPS.db";
-    private static final int DATABASE_VERSION = 4;
+    private static final int DATABASE_VERSION = 5;
 
     // Users table
     private static final String TABLE_USERS = "users";
@@ -56,8 +56,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_BOOKMARK_PROBLEM_CODE = "problem_code";
     private static final String COLUMN_BOOKMARK_PROBLEM_NAME = "problem_name";
     private static final String COLUMN_BOOKMARK_PROBLEM_RATING = "problem_rating";
-    private static final String COLUMN_BOOKMARK_CATEGORY = "category"; // "to_solve" or "interesting"
+    private static final String COLUMN_BOOKMARK_CATEGORY = "category"; // Now stores category name
     private static final String COLUMN_BOOKMARK_ADDED_AT = "added_at";
+
+    // Bookmark Categories table
+    private static final String TABLE_BOOKMARK_CATEGORIES = "bookmark_categories";
+    private static final String COLUMN_CATEGORY_ID = "category_id";
+    private static final String COLUMN_CATEGORY_USER_ID = "user_id";
+    private static final String COLUMN_CATEGORY_NAME = "category_name";
+    private static final String COLUMN_CATEGORY_CREATED_AT = "created_at";
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -132,6 +139,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_BOOKMARK_CATEGORY + ")"
                 + ")";
         db.execSQL(CREATE_BOOKMARKED_PROBLEMS_TABLE);
+
+        // Categories table
+        String CREATE_BOOKMARK_CATEGORIES_TABLE = "CREATE TABLE " + TABLE_BOOKMARK_CATEGORIES + "("
+                + COLUMN_CATEGORY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_CATEGORY_USER_ID + " INTEGER NOT NULL,"
+                + COLUMN_CATEGORY_NAME + " TEXT NOT NULL,"
+                + COLUMN_CATEGORY_CREATED_AT + " INTEGER NOT NULL,"
+                + "FOREIGN KEY(" + COLUMN_CATEGORY_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COLUMN_USER_ID + "),"
+                + "UNIQUE(" + COLUMN_CATEGORY_USER_ID + "," + COLUMN_CATEGORY_NAME + ")"
+                + ")";
+        db.execSQL(CREATE_BOOKMARK_CATEGORIES_TABLE);
     }
 
     @Override
@@ -200,6 +218,24 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     + COLUMN_BOOKMARK_CATEGORY + ")"
                     + ")";
             db.execSQL(CREATE_BOOKMARKED_PROBLEMS_TABLE);
+        }
+
+        if (oldVersion < 5) {
+            // Add categories table
+            String CREATE_BOOKMARK_CATEGORIES_TABLE = "CREATE TABLE " + TABLE_BOOKMARK_CATEGORIES + "("
+                    + COLUMN_CATEGORY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + COLUMN_CATEGORY_USER_ID + " INTEGER NOT NULL,"
+                    + COLUMN_CATEGORY_NAME + " TEXT NOT NULL,"
+                    + COLUMN_CATEGORY_CREATED_AT + " INTEGER NOT NULL,"
+                    + "FOREIGN KEY(" + COLUMN_CATEGORY_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COLUMN_USER_ID
+                    + "),"
+                    + "UNIQUE(" + COLUMN_CATEGORY_USER_ID + "," + COLUMN_CATEGORY_NAME + ")"
+                    + ")";
+            db.execSQL(CREATE_BOOKMARK_CATEGORIES_TABLE);
+
+            // Initialize default categories for existing users
+            // Note: In a real app we'd iterate all users, but here let's assume active user
+            // adds them on fetch if missing
         }
     }
 
@@ -542,5 +578,47 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cursor.close();
         db.close();
         return count;
+    }
+
+    // ===== CATEGORY METHODS =====
+
+    public long addCategory(int userId, String categoryName) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_CATEGORY_USER_ID, userId);
+        values.put(COLUMN_CATEGORY_NAME, categoryName);
+        values.put(COLUMN_CATEGORY_CREATED_AT, System.currentTimeMillis());
+
+        long result = db.insertWithOnConflict(TABLE_BOOKMARK_CATEGORIES, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+        db.close();
+        return result;
+    }
+
+    public Cursor getAllCategories(int userId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.rawQuery("SELECT * FROM " + TABLE_BOOKMARK_CATEGORIES + " WHERE " + COLUMN_CATEGORY_USER_ID + " = ?",
+                new String[] { String.valueOf(userId) });
+    }
+
+    public boolean deleteCategory(int userId, String categoryName) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        // First delete all problems in this category
+        db.delete(TABLE_BOOKMARKED_PROBLEMS,
+                COLUMN_BOOKMARK_USER_ID + " = ? AND " + COLUMN_BOOKMARK_CATEGORY + " = ?",
+                new String[] { String.valueOf(userId), categoryName });
+
+        // Then delete the category
+        int result = db.delete(TABLE_BOOKMARK_CATEGORIES,
+                COLUMN_CATEGORY_USER_ID + " = ? AND " + COLUMN_CATEGORY_NAME + " = ?",
+                new String[] { String.valueOf(userId), categoryName });
+        db.close();
+        return result > 0;
+    }
+
+    public void ensureDefaultCategories(int userId) {
+        // Only add if they don't exist
+        addCategory(userId, "Problems to solve");
+        addCategory(userId, "Interesting Problems");
+        addCategory(userId, "Hard Problems");
     }
 }

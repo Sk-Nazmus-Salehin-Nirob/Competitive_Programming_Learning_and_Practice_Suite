@@ -62,6 +62,12 @@
             android:name=".MainActivity"
             android:exported="false">
         </activity>
+        <!-- Bookmark Problems Activity -->
+        <activity
+            android:name=".BookmarkProblemsActivity"
+            android:exported="false"
+            android:parentActivityName=".BookmarksActivity" />
+
         <!-- Learning Activity -->
         <activity
             android:name=".LearningActivity"
