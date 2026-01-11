@@ -89,35 +89,41 @@ public class BookmarkProblemsActivity extends AppCompatActivity implements Bookm
 
     private void checkAndRemoveSolvedProblems() {
         new Thread(() -> {
-            String username = sessionManager.getUsername();
-            int userId = dbHelper.getUserIdByUsername(username);
+            try {
+                String username = sessionManager.getUsername();
+                int userId = dbHelper.getUserIdByUsername(username);
 
-            // Get all problems in this category
-            Cursor cursor = dbHelper.getBookmarks(userId, categoryName);
-            List<BookmarkedProblem> problems = new ArrayList<>();
-            if (cursor != null && cursor.moveToFirst()) {
-                do {
-                    BookmarkedProblem p = new BookmarkedProblem();
-                    p.setBookmarkId(cursor.getInt(cursor.getColumnIndexOrThrow("bookmark_id")));
-                    p.setProblemCode(cursor.getString(cursor.getColumnIndexOrThrow("problem_code")));
-                    problems.add(p);
-                } while (cursor.moveToNext());
-                cursor.close();
-            }
-
-            boolean removed = false;
-            for (BookmarkedProblem p : problems) {
-                if (dbHelper.isProblemSolved(userId, p.getProblemCode())) {
-                    dbHelper.deleteBookmark(p.getBookmarkId());
-                    removed = true;
+                // Get all problems in this category
+                Cursor cursor = dbHelper.getBookmarks(userId, categoryName);
+                List<BookmarkedProblem> problems = new ArrayList<>();
+                if (cursor != null && cursor.moveToFirst()) {
+                    do {
+                        BookmarkedProblem p = new BookmarkedProblem();
+                        p.setBookmarkId(cursor.getInt(cursor.getColumnIndexOrThrow("bookmark_id")));
+                        p.setProblemCode(cursor.getString(cursor.getColumnIndexOrThrow("problem_code")));
+                        problems.add(p);
+                    } while (cursor.moveToNext());
+                    cursor.close();
                 }
-            }
 
-            if (removed) {
-                runOnUiThread(() -> {
-                    Toast.makeText(this, "Solved problems detected and removed!", Toast.LENGTH_SHORT).show();
-                    loadProblems();
-                });
+                boolean removed = false;
+                for (BookmarkedProblem p : problems) {
+                    if (dbHelper.isProblemSolved(userId, p.getProblemCode())) {
+                        dbHelper.deleteBookmark(p.getBookmarkId());
+                        removed = true;
+                    }
+                }
+
+                if (removed) {
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed()) {
+                            Toast.makeText(this, "Solved problems detected and removed!", Toast.LENGTH_SHORT).show();
+                            loadProblems();
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error checking solved problems", e);
             }
         }).start();
     }

@@ -78,6 +78,12 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
                 drawerLayout.closeDrawer(GravityCompat.START);
                 return true;
+            } else if (id == R.id.nav_notes) {
+                // Navigate to Notes screen
+                Intent intent = new Intent(MainActivity.this, NotesActivity.class);
+                startActivity(intent);
+                drawerLayout.closeDrawer(GravityCompat.START);
+                return true;
             }
 
             return false;

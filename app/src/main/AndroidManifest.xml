@@ -74,6 +74,12 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 
+        <!-- Notes Activity -->
+        <activity
+            android:name=".NotesActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
     </application>
 
 </manifest>

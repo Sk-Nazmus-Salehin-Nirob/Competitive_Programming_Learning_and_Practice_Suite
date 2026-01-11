@@ -11,7 +11,7 @@ import java.security.NoSuchAlgorithmException;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "CPLPS.db";
-    private static final int DATABASE_VERSION = 5;
+    private static final int DATABASE_VERSION = 6;
 
     // Users table
     private static final String TABLE_USERS = "users";
@@ -65,6 +65,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_CATEGORY_USER_ID = "user_id";
     private static final String COLUMN_CATEGORY_NAME = "category_name";
     private static final String COLUMN_CATEGORY_CREATED_AT = "created_at";
+
+    // Notes table
+    private static final String TABLE_NOTES = "notes";
+    private static final String COLUMN_NOTE_ID = "note_id";
+    private static final String COLUMN_NOTE_USER_ID = "user_id";
+    private static final String COLUMN_NOTE_CONTENT = "content";
+    private static final String COLUMN_NOTE_CREATED_AT = "created_at";
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -150,6 +157,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + "UNIQUE(" + COLUMN_CATEGORY_USER_ID + "," + COLUMN_CATEGORY_NAME + ")"
                 + ")";
         db.execSQL(CREATE_BOOKMARK_CATEGORIES_TABLE);
+
+        // Notes table
+        String CREATE_NOTES_TABLE = "CREATE TABLE " + TABLE_NOTES + "("
+                + COLUMN_NOTE_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_NOTE_USER_ID + " INTEGER NOT NULL,"
+                + COLUMN_NOTE_CONTENT + " TEXT NOT NULL,"
+                + COLUMN_NOTE_CREATED_AT + " INTEGER NOT NULL,"
+                + "FOREIGN KEY(" + COLUMN_NOTE_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COLUMN_USER_ID + ")"
+                + ")";
+        db.execSQL(CREATE_NOTES_TABLE);
     }
 
     @Override
@@ -236,6 +253,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             // Initialize default categories for existing users
             // Note: In a real app we'd iterate all users, but here let's assume active user
             // adds them on fetch if missing
+        }
+
+        if (oldVersion < 6) {
+            // Add notes table
+            String CREATE_NOTES_TABLE = "CREATE TABLE " + TABLE_NOTES + "("
+                    + COLUMN_NOTE_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + COLUMN_NOTE_USER_ID + " INTEGER NOT NULL,"
+                    + COLUMN_NOTE_CONTENT + " TEXT NOT NULL,"
+                    + COLUMN_NOTE_CREATED_AT + " INTEGER NOT NULL,"
+                    + "FOREIGN KEY(" + COLUMN_NOTE_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COLUMN_USER_ID + ")"
+                    + ")";
+            db.execSQL(CREATE_NOTES_TABLE);
         }
     }
 
@@ -499,7 +528,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         long result = db.insertWithOnConflict(TABLE_BOOKMARKED_PROBLEMS, null, values,
                 SQLiteDatabase.CONFLICT_REPLACE);
-        db.close();
+        // db.close(); // Don't close
 
         return result;
     }
@@ -526,7 +555,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         int result = db.delete(TABLE_BOOKMARKED_PROBLEMS, COLUMN_BOOKMARK_ID + " = ?",
                 new String[] { String.valueOf(bookmarkId) });
-        db.close();
+        // db.close();
         return result > 0;
     }
 
@@ -546,7 +575,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         platformCursor.close();
 
         if (platformId == -1) {
-            db.close();
+            // db.close();
             return false;
         }
 
@@ -561,7 +590,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
 
         cursor.close();
-        db.close();
+        // db.close();
         return solved;
     }
 
@@ -576,7 +605,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             count = cursor.getInt(0);
         }
         cursor.close();
-        db.close();
+        // db.close();
         return count;
     }
 
@@ -590,14 +619,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_CATEGORY_CREATED_AT, System.currentTimeMillis());
 
         long result = db.insertWithOnConflict(TABLE_BOOKMARK_CATEGORIES, null, values, SQLiteDatabase.CONFLICT_IGNORE);
-        db.close();
+        // db.close();
         return result;
     }
 
     public Cursor getAllCategories(int userId) {
         SQLiteDatabase db = this.getReadableDatabase();
-        return db.rawQuery("SELECT * FROM " + TABLE_BOOKMARK_CATEGORIES + " WHERE " + COLUMN_CATEGORY_USER_ID + " = ?",
-                new String[] { String.valueOf(userId) });
+        String query = "SELECT * FROM " + TABLE_BOOKMARK_CATEGORIES + " WHERE " + COLUMN_CATEGORY_USER_ID + " = ? " +
+                "ORDER BY CASE " + COLUMN_CATEGORY_NAME +
+                " WHEN 'Problems to solve' THEN 1 " +
+                " WHEN 'Interesting Problems' THEN 2 " +
+                " WHEN 'Hard Problems' THEN 3 " +
+                " ELSE 4 END, " + COLUMN_CATEGORY_NAME + " ASC";
+        return db.rawQuery(query, new String[] { String.valueOf(userId) });
     }
 
     public boolean deleteCategory(int userId, String categoryName) {
@@ -611,7 +645,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         int result = db.delete(TABLE_BOOKMARK_CATEGORIES,
                 COLUMN_CATEGORY_USER_ID + " = ? AND " + COLUMN_CATEGORY_NAME + " = ?",
                 new String[] { String.valueOf(userId), categoryName });
-        db.close();
+        // db.close();
         return result > 0;
     }
 
@@ -620,5 +654,34 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         addCategory(userId, "Problems to solve");
         addCategory(userId, "Interesting Problems");
         addCategory(userId, "Hard Problems");
+    }
+
+    // ===== NOTES METHODS =====
+
+    public long addNote(int userId, String content) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_NOTE_USER_ID, userId);
+        values.put(COLUMN_NOTE_CONTENT, content);
+        values.put(COLUMN_NOTE_CREATED_AT, System.currentTimeMillis());
+
+        long result = db.insert(TABLE_NOTES, null, values);
+        // db.close();
+        return result;
+    }
+
+    public Cursor getNotes(int userId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.rawQuery(
+                "SELECT * FROM " + TABLE_NOTES + " WHERE " + COLUMN_NOTE_USER_ID + " = ? ORDER BY "
+                        + COLUMN_NOTE_CREATED_AT + " ASC",
+                new String[] { String.valueOf(userId) });
+    }
+
+    public boolean deleteNote(int noteId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        int result = db.delete(TABLE_NOTES, COLUMN_NOTE_ID + " = ?", new String[] { String.valueOf(noteId) });
+        // db.close();
+        return result > 0;
     }
 }

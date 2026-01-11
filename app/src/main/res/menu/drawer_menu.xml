@@ -21,5 +21,9 @@
             android:id="@+id/nav_solved_problems"
             android:icon="@drawable/ic_problem"
             android:title="Solved Problems" />
+        <item
+            android:id="@+id/nav_notes"
+            android:icon="@drawable/ic_description"
+            android:title="Notes" />
     </group>
 </menu>
