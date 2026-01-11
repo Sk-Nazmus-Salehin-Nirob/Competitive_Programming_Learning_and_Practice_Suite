@@ -2,18 +2,14 @@ package com.cplps.android;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.MenuItem;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBarDrawerToggle;
+import android.view.View;
+import android.widget.ImageButton;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.GravityCompat;
-import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.cardview.widget.CardView;
 import com.cplps.android.utils.SessionManager;
-import com.google.android.material.navigation.NavigationView;
 
-public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
+public class MainActivity extends AppCompatActivity {
 
-    private DrawerLayout drawerLayout;
     private SessionManager sessionManager;
 
     @Override
@@ -27,42 +23,42 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
 
-        setupNavigation();
+        setupClickListeners();
+        setupLogout();
     }
 
-    private void setupNavigation() {
-        drawerLayout = findViewById(R.id.drawer_layout);
-        NavigationView navigationView = findViewById(R.id.nav_view);
+    private void setupClickListeners() {
+        // 1. Profile
+        CardView cardProfile = findViewById(R.id.card_profile);
+        cardProfile.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, ProfileActivity.class)));
 
-        setSupportActionBar(findViewById(R.id.toolbar));
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, drawerLayout,
-                findViewById(R.id.toolbar), R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
+        // 2. Problems
+        CardView cardProblems = findViewById(R.id.card_problems);
+        cardProblems.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, ProblemsActivity.class)));
 
-        navigationView.setNavigationItemSelectedListener(this);
+        // 3. Solved Problems
+        CardView cardSolved = findViewById(R.id.card_solved);
+        cardSolved.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, SolvedProblemsActivity.class)));
+
+        // 4. Bookmarks
+        CardView cardBookmarks = findViewById(R.id.card_bookmarks);
+        cardBookmarks.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, BookmarksActivity.class)));
+
+        // 5. Learning
+        CardView cardLearning = findViewById(R.id.card_learning);
+        cardLearning.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, LearningActivity.class)));
+
+        // 6. Notes
+        CardView cardNotes = findViewById(R.id.card_notes);
+        cardNotes.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, NotesActivity.class)));
     }
 
-    @Override
-    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        int id = item.getItemId();
-
-        if (id == R.id.nav_problems) {
-            startActivity(new Intent(this, ProblemsActivity.class));
-        } else if (id == R.id.nav_profile) {
-            startActivity(new Intent(this, ProfileActivity.class));
-        } else if (id == R.id.nav_bookmarks) {
-            startActivity(new Intent(this, BookmarksActivity.class));
-        } else if (id == R.id.nav_learning) {
-            startActivity(new Intent(this, LearningActivity.class));
-        } else if (id == R.id.nav_solved_problems) {
-            startActivity(new Intent(this, SolvedProblemsActivity.class));
-        } else if (id == R.id.nav_notes) {
-            startActivity(new Intent(this, NotesActivity.class));
-        }
-
-        drawerLayout.closeDrawer(GravityCompat.START);
-        return true;
+    private void setupLogout() {
+        ImageButton btnLogout = findViewById(R.id.btn_logout);
+        btnLogout.setOnClickListener(v -> {
+            sessionManager.logout();
+            redirectToLogin();
+        });
     }
 
     private void redirectToLogin() {

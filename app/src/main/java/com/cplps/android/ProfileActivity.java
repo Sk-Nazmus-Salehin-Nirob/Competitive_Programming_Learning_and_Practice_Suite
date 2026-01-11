@@ -311,7 +311,7 @@ public class ProfileActivity extends AppCompatActivity {
         chartRating.setData(lineData);
         chartRating.getDescription().setText("Contest Rating Progress");
         chartRating.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
-        chartRating.animateX(1000);
+
         chartRating.setVisibility(View.VISIBLE);
         chartRating.invalidate();
     }
